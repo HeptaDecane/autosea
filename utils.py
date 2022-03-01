@@ -42,9 +42,10 @@ class Browser(Thread):
 class Bot:
     def __init__(self, chrome, driver_location, binary_location, user_data, virtual=False):
         self.chrome = chrome
-        self.collection_url = None,
+        self.collection_url = None
         self.store = None
         self.asset_url = None
+        self.raise_exception = True
 
         if self.chrome:
             command = 'google-chrome --remote-debugging-port={} --user-data-dir="{}"'.format(debug_port, user_data)
@@ -108,7 +109,11 @@ class Bot:
                 print(e)
     
             if current_time - start_time > 30:
-                raise TimeoutException()
+                if self.raise_exception:
+                    TimeoutException()
+                else:
+                    os.system('notify-send "Exception" "{}"'.format(desc))
+                    start_time = current_time
     
         return items[index]
 
@@ -127,8 +132,11 @@ class Bot:
                     return target[index], xpaths.index(xpath)
 
             if current_time - start_time > 30:
-                os.system('notify-send "Timeout" "captcha"')
-                start_time = current_time
+                if self.raise_exception:
+                    TimeoutException()
+                else:
+                    os.system('notify-send "Timeout" "{}"'.format(desc))
+                    start_time = current_time
 
     def sign_or_reject(self, delay=0):
         start_time = time.time()
@@ -160,7 +168,11 @@ class Bot:
                 return
 
             if current_time - start_time > 30:
-                raise TimeoutException()
+                if self.raise_exception:
+                    TimeoutException()
+                else:
+                    os.system('notify-send "Exception" "sign_or_reject"')
+                    start_time = current_time
 
     def detect_captcha(self):
         start_time = time.time()
@@ -176,8 +188,11 @@ class Bot:
                 return False
     
             if current_time - start_time > 30:
-                os.system('notify-send "Timeout" "captcha"')
-                start_time = current_time
+                if self.raise_exception:
+                    TimeoutException()
+                else:
+                    os.system('notify-send "Timeout" "captcha"')
+                    start_time = current_time
 
     def select_media(self, filename, delay=0.0):
         target = self.locate_element('//input[@id="media"]', 'media')
