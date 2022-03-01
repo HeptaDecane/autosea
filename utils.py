@@ -47,10 +47,7 @@ class Bot:
         self.asset_url = None
         self.raise_exception = True
 
-        if self.chrome:
-            command = 'google-chrome --remote-debugging-port={} --user-data-dir="{}"'.format(debug_port, user_data)
-        else:
-            command = 'brave-browser --remote-debugging-port={} --user-data-dir="{}"'.format(debug_port, user_data)
+        command = 'google-chrome --remote-debugging-port={} --user-data-dir="{}"'.format(debug_port, user_data)
 
         options = webdriver.ChromeOptions()
         options.binary_location = binary_location
@@ -68,10 +65,7 @@ class Bot:
         self.collection_url = collection_url
         self.asset_url = '{}asset/matic/0x2953399124f0cbb46d2cbacd8a89cf0599974963/{}/edit'.format(collection_url, '{}')
 
-        if self.chrome:
-            ext = "chrome-extension://nkbihfbeogaeaoehlefnkodbefgpgknn/home.html#unlock"
-        else:
-            ext = "brave://wallet"
+        ext = "chrome-extension://nkbihfbeogaeaoehlefnkodbefgpgknn/home.html#unlock"
 
         # unlock wallet
         self.driver.execute_script("window.open('about:blank', 'wallet');")
@@ -80,10 +74,7 @@ class Bot:
 
         target = self.locate_element('//input[@class="MuiInputBase-input MuiInput-input"]', 'wallet password')
         target.send_keys(wallet_password)
-        if self.chrome:
-            target = self.locate_element('//button[text()="Unlock"]', 'unlock wallet')
-        else:
-            target = self.locate_element('//button', 'unlock wallet')
+        target = self.locate_element('//button[text()="Unlock"]', 'unlock wallet')
         target.click()
         time.sleep(5)
 
@@ -152,10 +143,9 @@ class Bot:
             targets = self.driver.find_elements_by_xpath('//button[text()="Sign"]')
             if targets:
                 print('sign')
-                if self.chrome:
-                    target = self.locate_element('//div[@class="signature-request-message__scroll-button"]')
-                    target.click()
-                    time.sleep(delay)
+                target = self.locate_element('//div[@class="signature-request-message__scroll-button"]')
+                target.click()
+                time.sleep(delay)
                 targets[0].click()
                 self.driver.switch_to.window("opensea")
                 return
@@ -346,10 +336,7 @@ class Bot:
         time.sleep(delay)
     
         self.driver.switch_to.window("wallet")
-        if self.chrome:
-            target = self.locate_element('//h2[text()="Signature Request"]')
-        else:
-            target = self.locate_element('//div[@title="Signature Request"]')
+        target = self.locate_element('//h2[text()="Signature Request"]')
         target.click()
         time.sleep(delay)
     
