@@ -23,6 +23,13 @@ def balance_of(address, token_id):
     return balance
 
 
+def balance_of_batch(addresses, token_ids):
+    addresses = [Web3.toChecksumAddress(address) for address in addresses]
+    token_ids = [int(token_id) for token_id in token_ids]
+    balances = openstore.functions.balanceOfBatch(addresses, token_ids).call()
+    return balances
+
+
 if __name__ == '__main__':
     print('web3 connected:', web3.isConnected())
     print('contract:', openstore.functions.name().call())
