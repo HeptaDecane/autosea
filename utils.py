@@ -112,6 +112,24 @@ class Bot:
     
         return items[index]
 
+    def locate_elements(self, xpaths, desc=None, index=0):
+        if desc:
+            print(desc)
+
+        start_time = time.time()
+        while True:
+            current_time = time.time()
+
+            for xpath in xpaths:
+                target = self.driver.find_elements_by_xpath(xpath)
+                if target:
+                    print(xpath)
+                    return target[index], xpaths.index(xpath)
+
+            if current_time - start_time > 30:
+                os.system('notify-send "Timeout" "captcha"')
+                start_time = current_time
+
     def sign_or_reject(self, delay=0):
         start_time = time.time()
         print("sign_or_reject")
