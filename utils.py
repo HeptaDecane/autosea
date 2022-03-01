@@ -361,6 +361,18 @@ class Bot:
         target = self.locate_element('//h4[text()="Your NFT is listed!"]')
         target.click()
         time.sleep(delay)
+
+    def sign_message(self, delay=0.0):
+        self.driver.switch_to.window("wallet")
+        target = self.locate_element('//h2[text()="Signature Request"]')
+        target.click()
+        time.sleep(delay)
+
+        target = self.locate_element('//button[text()="Sign"]', 'metamask sign')
+        target.click()
+        time.sleep(delay)
+
+        self.driver.switch_to.window("opensea")
     
     def freeze_metadata(self, delay=0.0):
         target = self.locate_element('//input[@id="freezeMetadata"]', 'freeze switch')
@@ -379,19 +391,15 @@ class Bot:
         target.click()
         time.sleep(delay)
 
-    def sign_wallet(self, delay=0.0):
+    def sign_transaction(self, delay=0.0):
         self.driver.switch_to.window("wallet")
-        if self.chrome:
-            target = self.locate_element('//h2[text()="Signature Request"]')
-        else:
-            target = self.locate_element('//div[@title="Signature Request"]')
+        target = self.locate_element('//h2[text()="Signature Request"]')
         target.click()
         time.sleep(delay)
-    
-        if self.chrome:
-            target = self.locate_element('//div[@class="signature-request-message__scroll-button"]')
-            target.click()
-            time.sleep(delay)
+
+        target = self.locate_element('//div[@class="signature-request-message__scroll-button"]')
+        target.click()
+        time.sleep(delay)
     
         target = self.locate_element('//button[text()="Sign"]', 'metamask sign')
         target.click()
