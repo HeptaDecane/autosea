@@ -40,8 +40,7 @@ class Browser(Thread):
 
 
 class Bot:
-    def __init__(self, chrome, driver_location, binary_location, user_data, virtual=False):
-        self.chrome = chrome
+    def __init__(self, driver_location, binary_location, user_data, virtual=False):
         self.collection_url = None
         self.store = None
         self.asset_url = None
