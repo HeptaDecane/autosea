@@ -77,6 +77,14 @@ class Bot:
 
         self.driver.switch_to.default_content()
 
+        target, target_index = self.locate_elements([
+            '//h4[text()="Please wait..."]',
+            '//div[contains(@style,"visibility: visible;")]'
+        ])
+
+        if target_index == 0:
+            return
+
         target = self.locate_element('//iframe[@title="recaptcha challenge expires in two minutes"]')
         self.driver.switch_to.frame(target)
 
