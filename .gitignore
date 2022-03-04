@@ -9,3 +9,7 @@
 
 # idea
 .idea/
+
+# testing
+test.py
+*_test*
