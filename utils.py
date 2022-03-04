@@ -29,10 +29,23 @@ class TimeoutException(Exception):
 
 
 class Browser(Thread):
-    def __init__(self, command, virtual=False):
-        self.virtual = virtual
-        self.command = command
+    def __init__(self, driver_location, binary_location, user_data, command, virtual=False):
         Thread.__init__(self)
+
+        self.virtual = virtual
+        self.wallet_unlocked = False
+        self.command = '{} --remote-debugging-port={} --user-data-dir="{}"'.format(command, debug_port, user_data)
+
+        options = webdriver.ChromeOptions()
+        options.binary_location = binary_location
+        options.add_experimental_option("debuggerAddress", "127.0.0.1:{}".format(debug_port))
+        options.add_argument('--user-data-dir={}'.format(user_data))
+        options.add_argument("--disable-blink-features=AutomationControlled")
+
+        self.start()
+        self.driver = webdriver.Chrome(executable_path=driver_location, options=options)
+        self.locate_element = None
+        self.locate_elements = None
 
     def run(self):
         if self.virtual:
@@ -41,109 +54,9 @@ class Browser(Thread):
 
         os.system(self.command)
 
-
-class Bot:
-    def __init__(self, driver_location, binary_location, user_data, virtual=False):
-        self.collection_url = None
-        self.store = None
-        self.asset_url = None
-        self.raise_exception = True
-
-        command = 'google-chrome --remote-debugging-port={} --user-data-dir="{}"'.format(debug_port, user_data)
-
-        options = webdriver.ChromeOptions()
-        options.binary_location = binary_location
-        options.add_experimental_option("debuggerAddress", "127.0.0.1:{}".format(debug_port))
-        options.add_argument('--user-data-dir={}'.format(user_data))
-        options.add_argument("--disable-blink-features=AutomationControlled")
-
-        self.browser = Browser(command, virtual=virtual)
-        self.browser.start()
-        self.driver = webdriver.Chrome(executable_path=driver_location, options=options)
-        self.driver.maximize_window()
-
-    def load_captcha_solver(self):
-        self.driver.execute_script("window.open('about:blank', 'solver');")
-        self.driver.switch_to.window('solver')
-        self.driver.get('https://azure.microsoft.com/en-us/services/cognitive-services/speech-to-text')
-        time.sleep(5)
-
-    def solve_captcha(self):
-        target = self.locate_element('//iframe[@title="reCAPTCHA"]')
-        self.driver.switch_to.frame(target)
-
-        target = self.locate_element('//span[@id="recaptcha-anchor"]')
-        target.click()
-
-        self.driver.switch_to.default_content()
-
-        target, target_index = self.locate_elements([
-            '//h4[text()="Please wait..."]',
-            '//div[contains(@style,"visibility: visible;")]'
-        ])
-
-        if target_index == 0:
-            return
-
-        target = self.locate_element('//iframe[@title="recaptcha challenge expires in two minutes"]')
-        self.driver.switch_to.frame(target)
-
-        time.sleep(1)
-        self.locate_element('//button[@id="recaptcha-audio-button"]')
-        self.driver.execute_script('document.getElementById("recaptcha-audio-button").click()')
-
-        target = self.locate_element('//a[@class="rc-audiochallenge-tdownload-link"]')
-        src = target.get_attribute('href')
-
-        self.driver.switch_to.default_content()
-        self.driver.switch_to.window('solver')
-        self.driver.refresh()
-
-        response = requests.get(src)
-        fileid = ''.join(str(uuid4()).split('-'))
-        file = open('audio/{}.mp3'.format(fileid), "wb")
-        file.write(response.content)
-        file.close()
-        os.system('ffmpeg -i audio/{}.mp3 audio/{}.wav -y'.format(fileid, fileid))
-
-        self.locate_element('//input[@id="punctuation"]')
-        self.driver.execute_script('document.getElementById("punctuation").click()')
-        target = self.locate_element('//input[@id="fileinput"]')
-        target.send_keys('{}/audio/{}.wav'.format(DIR, fileid))
-
-        text = None
-        while True:
-            target = self.locate_element('//textarea[@id="speechout"]')
-            text = target.get_attribute('value')
-            if fileid in text and text.count('-') > 100:
-                break
-
-        for phrase in text.split('-'):
-            if fileid not in phrase and '\n' in phrase:
-                text = phrase.strip()
-                break
-
-        self.driver.switch_to.window('opensea')
-        target = self.locate_element('//iframe[@title="recaptcha challenge expires in two minutes"]')
-        self.driver.switch_to.frame(target)
-
-        target = self.locate_element('//input[@id="audio-response"]')
-        target.send_keys(text)
-
-        time.sleep(1)
-        self.locate_element('//button[@id="recaptcha-verify-button"]')
-        self.driver.execute_script('document.getElementById("recaptcha-verify-button").click()')
-
-        self.driver.switch_to.default_content()
-
-    def access_collection(self, collection_url, wallet_password, store=None):
-        self.store = store
-        self.collection_url = collection_url
-        self.asset_url = '{}asset/matic/0x2953399124f0cbb46d2cbacd8a89cf0599974963/{}/edit'.format(collection_url, '{}')
-
+    def unlock_wallet(self, wallet_password):
         ext = "chrome-extension://nkbihfbeogaeaoehlefnkodbefgpgknn/home.html#unlock"
 
-        # unlock wallet
         self.driver.execute_script("window.open('about:blank', 'wallet');")
         self.driver.switch_to.window("wallet")
         self.driver.get(ext)
@@ -152,17 +65,83 @@ class Bot:
         target.send_keys(wallet_password)
         target = self.locate_element('//button[text()="Unlock"]', 'unlock wallet')
         target.click()
+        self.wallet_unlocked = True
         time.sleep(5)
 
-        # go to collection page
-        self.driver.execute_script("window.open('about:blank', 'opensea');")
+    def sign_message(self, delay=0.0):
+        self.driver.switch_to.window("wallet")
+        target = self.locate_element('//h2[text()="Signature Request"]')
+        target.click()
+        time.sleep(delay)
+
+        target = self.locate_element('//button[text()="Sign"]', 'metamask sign')
+        target.click()
+        time.sleep(delay)
+
         self.driver.switch_to.window("opensea")
-        self.driver.get(collection_url)
-        time.sleep(5)
+
+    def sign_transaction(self, delay=0.0):
+        self.driver.switch_to.window("wallet")
+        target = self.locate_element('//h2[text()="Signature Request"]')
+        target.click()
+        time.sleep(delay)
+
+        target = self.locate_element('//div[@class="signature-request-message__scroll-button"]')
+        target.click()
+        time.sleep(delay)
+
+        target = self.locate_element('//button[text()="Sign"]', 'metamask sign')
+        target.click()
+        time.sleep(delay)
+
+        self.driver.switch_to.window("opensea")
+
+    def sign_or_reject_transaction(self, delay=0):
+        print("sign_or_reject")
+
+        self.driver.switch_to.window("wallet")
+        self.locate_element('//div[contains(text(),"Queue")]')
+        time.sleep(delay)
+        self.driver.refresh()
+
+        target, target_index = self.locate_elements([
+            '//button[text()="Sign"]',
+            '//button[text()="Reject"]'
+        ])
+
+        if target_index == 0:
+            print('sign')
+            target = self.locate_element('//div[@class="signature-request-message__scroll-button"]')
+            target.click()
+            time.sleep(delay)
+            target = self.locate_element('//button[text()="Sign"]')
+            target.click()
+
+        elif target_index == 1:
+            print('reject')
+            target = self.locate_element('//button[text()="Reject"]')
+            target.click()
+
+        self.driver.switch_to.window("opensea")
+
+
+class Bot:
+    def __init__(self, browser):
+        self.collection_url = None
+        self.store = None
+        self.asset_url = None
+        self.raise_exception = True
+        self.captcha_solver_loaded = False
+        self.browser = browser
+        self.driver = browser.driver
+        self.driver.maximize_window()
+
+        browser.locate_element = self.locate_element
+        browser.locate_elements = self.locate_elements
+
+    def reload(self):
         self.driver.refresh()
         time.sleep(5)
-
-        self.locate_element('//a[text()="Add item"]', 'add item')
 
     def locate_element(self, xpath, desc=None, index=0):
         start_time = time.time()
@@ -174,14 +153,14 @@ class Bot:
                 items = self.driver.find_elements_by_xpath(xpath)
             except Exception as e:
                 print(e)
-    
+
             if current_time - start_time > 30:
                 if self.raise_exception:
-                    TimeoutException()
+                    raise TimeoutException()
                 else:
                     os.system('notify-send "Exception" "{}"'.format(desc))
                     start_time = current_time
-    
+
         return items[index]
 
     def locate_elements(self, xpaths, desc=None, index=0):
@@ -200,65 +179,27 @@ class Bot:
 
             if current_time - start_time > 30:
                 if self.raise_exception:
-                    TimeoutException()
+                    raise TimeoutException()
                 else:
                     os.system('notify-send "Timeout" "{}"'.format(desc))
                     start_time = current_time
 
-    def sign_or_reject(self, delay=0):
-        start_time = time.time()
-        print("sign_or_reject")
+    def access_collection(self, collection_url):
+        if not self.browser.wallet_unlocked:
+            raise Exception('wallet is locked')
 
-        self.driver.switch_to.window("wallet")
-        self.locate_element('//div[contains(text(),"Queue")]')
-        time.sleep(delay)
+        self.collection_url = collection_url
+        self.asset_url = '{}asset/matic/0x2953399124f0cbb46d2cbacd8a89cf0599974963/{}/edit'.format(collection_url, '{}')
+
+        # go to collection page
+        self.driver.execute_script("window.open('about:blank', 'opensea');")
+        self.driver.switch_to.window("opensea")
+        self.driver.get(collection_url)
+        time.sleep(5)
         self.driver.refresh()
+        time.sleep(5)
 
-        while True:
-            current_time = time.time()
-            targets = self.driver.find_elements_by_xpath('//button[text()="Sign"]')
-            if targets:
-                print('sign')
-                target = self.locate_element('//div[@class="signature-request-message__scroll-button"]')
-                target.click()
-                time.sleep(delay)
-                targets[0].click()
-                self.driver.switch_to.window("opensea")
-                return
-
-            targets = self.driver.find_elements_by_xpath('//button[text()="Reject"]')
-            if targets:
-                print('reject')
-                targets[0].click()
-                self.driver.switch_to.window("opensea")
-                return
-
-            if current_time - start_time > 30:
-                if self.raise_exception:
-                    TimeoutException()
-                else:
-                    os.system('notify-send "Exception" "sign_or_reject"')
-                    start_time = current_time
-
-    def detect_captcha(self):
-        start_time = time.time()
-        while True:
-            current_time = time.time()
-            target = self.driver.find_elements_by_xpath('//h4[text()="Almost done"]')
-            if target:
-                os.system('notify-send "Captcha" "detected"')
-                return True
-    
-            target = self.driver.find_elements_by_xpath('//h4[text()="Please wait..."]')
-            if target:
-                return False
-    
-            if current_time - start_time > 30:
-                if self.raise_exception:
-                    TimeoutException()
-                else:
-                    os.system('notify-send "Timeout" "captcha"')
-                    start_time = current_time
+        self.locate_element('//a[text()="Add item"]', 'add item')
 
     def select_media(self, filename, delay=0.0):
         target = self.locate_element('//input[@id="media"]', 'media')
@@ -405,38 +346,7 @@ class Bot:
         target = self.locate_element('//button[text()="Complete listing"]', 'complete listing')
         target.click()
         time.sleep(delay)
-    
-    def sign(self, delay=0.0):
-        target = self.locate_element('//button[text()="Sign"]', 'sign')
-        target.click()
-        time.sleep(delay)
-    
-        self.driver.switch_to.window("wallet")
-        target = self.locate_element('//h2[text()="Signature Request"]')
-        target.click()
-        time.sleep(delay)
-    
-        target = self.locate_element('//button[text()="Sign"]', 'metamask sign')
-        target.click()
-        time.sleep(delay)
-    
-        self.driver.switch_to.window("opensea")
-        target = self.locate_element('//h4[text()="Your NFT is listed!"]')
-        target.click()
-        time.sleep(delay)
 
-    def sign_message(self, delay=0.0):
-        self.driver.switch_to.window("wallet")
-        target = self.locate_element('//h2[text()="Signature Request"]')
-        target.click()
-        time.sleep(delay)
-
-        target = self.locate_element('//button[text()="Sign"]', 'metamask sign')
-        target.click()
-        time.sleep(delay)
-
-        self.driver.switch_to.window("opensea")
-    
     def freeze_metadata(self, delay=0.0):
         target = self.locate_element('//input[@id="freezeMetadata"]', 'freeze switch')
         target.click()
@@ -453,26 +363,6 @@ class Bot:
         target = self.locate_element('//button[text()="Confirm"]', 'freeze btn')
         target.click()
         time.sleep(delay)
-
-    def sign_transaction(self, delay=0.0):
-        self.driver.switch_to.window("wallet")
-        target = self.locate_element('//h2[text()="Signature Request"]')
-        target.click()
-        time.sleep(delay)
-
-        target = self.locate_element('//div[@class="signature-request-message__scroll-button"]')
-        target.click()
-        time.sleep(delay)
-    
-        target = self.locate_element('//button[text()="Sign"]', 'metamask sign')
-        target.click()
-        time.sleep(delay)
-    
-        self.driver.switch_to.window("opensea")
-
-    def reload(self):
-        self.driver.refresh()
-        time.sleep(5)
     
     def wait_for_progress(self, delay=0):
         print("wait_for_progress")
@@ -563,3 +453,84 @@ class Bot:
             start += 1
             offset['start'] = start
             json.dump(offset, open(offset_file, 'w'), indent=2)
+
+    def load_captcha_solver(self):
+        self.driver.execute_script("window.open('about:blank', 'solver');")
+        self.driver.switch_to.window('solver')
+        self.driver.get('https://azure.microsoft.com/en-us/services/cognitive-services/speech-to-text')
+        self.captcha_solver_loaded = True
+        time.sleep(5)
+
+    def solve_captcha(self):
+        if not self.captcha_solver_loaded:
+            raise Exception('captcha solver not loaded')
+
+        target = self.locate_element('//iframe[@title="reCAPTCHA"]')
+        self.driver.switch_to.frame(target)
+
+        target = self.locate_element('//span[@id="recaptcha-anchor"]')
+        target.click()
+
+        self.driver.switch_to.default_content()
+
+        target, target_index = self.locate_elements([
+            '//h4[text()="Please wait..."]',
+            '//div[contains(@style,"visibility: visible;")]'
+        ])
+
+        if target_index == 0:
+            return
+
+        target = self.locate_element('//iframe[@title="recaptcha challenge expires in two minutes"]')
+        self.driver.switch_to.frame(target)
+
+        time.sleep(1)
+        self.locate_element('//button[@id="recaptcha-audio-button"]')
+        self.driver.execute_script('document.getElementById("recaptcha-audio-button").click()')
+
+        target = self.locate_element('//a[@class="rc-audiochallenge-tdownload-link"]')
+        src = target.get_attribute('href')
+
+        self.driver.switch_to.default_content()
+        self.driver.switch_to.window('solver')
+        self.driver.refresh()
+
+        response = requests.get(src)
+        fileid = ''.join(str(uuid4()).split('-'))
+        file = open('{}.mp3'.format(fileid), "wb")
+        file.write(response.content)
+        file.close()
+        os.system('ffmpeg -i {}.mp3 {}.wav -y'.format(fileid, fileid))
+
+        self.locate_element('//input[@id="punctuation"]')
+        self.driver.execute_script('document.getElementById("punctuation").click()')
+        target = self.locate_element('//input[@id="fileinput"]')
+        target.send_keys('{}/{}.wav'.format(DIR, fileid))
+
+        text = None
+        while True:
+            target = self.locate_element('//textarea[@id="speechout"]',)
+            text = target.get_attribute('value')
+            if fileid in text and text.count('-') > 100:
+                break
+
+        for phrase in text.split('-'):
+            if fileid not in phrase and '\n' in phrase:
+                text = phrase.strip()
+                break
+
+        os.remove('{}.mp3'.format(fileid))
+        os.remove('{}.wav'.format(fileid))
+
+        self.driver.switch_to.window('opensea')
+        target = self.locate_element('//iframe[@title="recaptcha challenge expires in two minutes"]')
+        self.driver.switch_to.frame(target)
+
+        target = self.locate_element('//input[@id="audio-response"]')
+        target.send_keys(text)
+
+        time.sleep(1)
+        self.locate_element('//button[@id="recaptcha-verify-button"]')
+        self.driver.execute_script('document.getElementById("recaptcha-verify-button").click()')
+
+        self.driver.switch_to.default_content()
