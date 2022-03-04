@@ -98,8 +98,8 @@ class Bot:
         file.close()
         os.system('ffmpeg -i audio/{}.mp3 audio/{}.wav -y'.format(fileid, fileid))
 
-        target = self.locate_element('//input[@id="punctuation"]')
-        target.click()
+        self.locate_element('//input[@id="punctuation"]')
+        self.driver.execute_script('document.getElementById("punctuation").click()')
         target = self.locate_element('//input[@id="fileinput"]')
         target.send_keys('{}/audio/{}.wav'.format(DIR, fileid))
 
