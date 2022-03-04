@@ -89,6 +89,7 @@ class Bot:
 
         self.driver.switch_to.default_content()
         self.driver.switch_to.window('solver')
+        self.driver.refresh()
 
         response = requests.get(src)
         fileid = ''.join(str(uuid4()).split('-'))
@@ -97,6 +98,8 @@ class Bot:
         file.close()
         os.system('ffmpeg -i audio/{}.mp3 audio/{}.wav -y'.format(fileid, fileid))
 
+        target = self.locate_element('//input[@id="punctuation"]')
+        target.click()
         target = self.locate_element('//input[@id="fileinput"]')
         target.send_keys('{}/audio/{}.wav'.format(DIR, fileid))
 
