@@ -3,6 +3,8 @@ import re
 import enum
 import time
 import json
+import requests
+from uuid import uuid4
 from pathlib import Path
 from threading import Thread
 from datetime import datetime
@@ -11,6 +13,7 @@ from pyvirtualdisplay import Display
 from selenium.webdriver.common.keys import Keys
 
 BASE_DIR = Path(__file__).resolve().parent
+DIR = os.getcwd()
 debug_port = 9222
 
 
@@ -58,6 +61,69 @@ class Bot:
         self.browser.start()
         self.driver = webdriver.Chrome(executable_path=driver_location, options=options)
         self.driver.maximize_window()
+
+    def load_captcha_solver(self):
+        self.driver.execute_script("window.open('about:blank', 'solver');")
+        self.driver.switch_to.window('solver')
+        self.driver.get('https://azure.microsoft.com/en-us/services/cognitive-services/speech-to-text')
+        time.sleep(5)
+
+    def solve_captcha(self):
+        target = self.locate_element('//iframe[@title="reCAPTCHA"]')
+        self.driver.switch_to.frame(target)
+
+        target = self.locate_element('//span[@id="recaptcha-anchor"]')
+        target.click()
+
+        self.driver.switch_to.default_content()
+
+        target = self.locate_element('//iframe[@title="recaptcha challenge expires in two minutes"]')
+        self.driver.switch_to.frame(target)
+
+        time.sleep(1)
+        self.locate_element('//button[@id="recaptcha-audio-button"]')
+        self.driver.execute_script('document.getElementById("recaptcha-audio-button").click()')
+
+        target = self.locate_element('//a[@class="rc-audiochallenge-tdownload-link"]')
+        src = target.get_attribute('href')
+
+        self.driver.switch_to.default_content()
+        self.driver.switch_to.window('solver')
+
+        response = requests.get(src)
+        fileid = ''.join(str(uuid4()).split('-'))
+        file = open('audio/{}.mp3'.format(fileid), "wb")
+        file.write(response.content)
+        file.close()
+        os.system('ffmpeg -i audio/{}.mp3 audio/{}.wav -y'.format(fileid, fileid))
+
+        target = self.locate_element('//input[@id="fileinput"]')
+        target.send_keys('{}/audio/{}.wav'.format(DIR, fileid))
+
+        text = None
+        while True:
+            target = self.locate_element('//textarea[@id="speechout"]')
+            text = target.get_attribute('value')
+            if fileid in text and text.count('-') > 100:
+                break
+
+        for phrase in text.split('-'):
+            if fileid not in phrase and '\n' in phrase:
+                text = phrase.strip()
+                break
+
+        self.driver.switch_to.window('opensea')
+        target = self.locate_element('//iframe[@title="recaptcha challenge expires in two minutes"]')
+        self.driver.switch_to.frame(target)
+
+        target = self.locate_element('//input[@id="audio-response"]')
+        target.send_keys(text)
+
+        time.sleep(1)
+        self.locate_element('//button[@id="recaptcha-verify-button"]')
+        self.driver.execute_script('document.getElementById("recaptcha-verify-button").click()')
+
+        self.driver.switch_to.default_content()
 
     def access_collection(self, collection_url, wallet_password, store=None):
         self.store = store
