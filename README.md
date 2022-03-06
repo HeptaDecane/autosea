@@ -1,6 +1,6 @@
 # autosea
 some utils for automating gasfree opensea functions
 
-## Requirements
+### Requirements
 - Linux
 - Google Chrome with MetaMask
