@@ -14,7 +14,6 @@ from selenium.webdriver.common.keys import Keys
 
 BASE_DIR = Path(__file__).resolve().parent
 DIR = os.getcwd()
-debug_port = 9222
 
 
 class Response(enum.Enum):
@@ -29,7 +28,7 @@ class TimeoutException(Exception):
 
 
 class Browser(Thread):
-    def __init__(self, driver_location, binary_location, user_data, command, virtual=False):
+    def __init__(self, driver_location, binary_location, user_data, command, virtual=False, debug_port=9222):
         Thread.__init__(self)
 
         self.virtual = virtual
