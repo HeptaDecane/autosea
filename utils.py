@@ -144,22 +144,25 @@ class Bot:
 
     def locate_element(self, xpath, desc=None, index=0):
         start_time = time.time()
-        print(xpath) if desc is None else print(desc)
+        print(xpath, end=' ') if desc is None else print(desc, end=' ')
         items = []
         while not items:
             current_time = time.time()
             try:
                 items = self.driver.find_elements_by_xpath(xpath)
             except Exception as e:
+                print()
                 print(e)
 
             if current_time - start_time > 30:
+                print('⧖')
                 if self.raise_exception:
                     raise TimeoutException()
                 else:
                     os.system('notify-send "Exception" "{}"'.format(desc))
                     start_time = current_time
 
+        print('✓')
         return items[index]
 
     def locate_elements(self, xpaths, desc=None, index=0):
