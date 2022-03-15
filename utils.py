@@ -467,8 +467,13 @@ class Bot:
         if not self.captcha_solver_loaded:
             raise Exception('captcha solver not loaded')
 
-        target = self.locate_element('//iframe[@title="reCAPTCHA"]')
-        self.driver.switch_to.frame(target)
+        while True:
+            target = self.locate_element('//iframe[@title="reCAPTCHA"]')
+            self.driver.switch_to.frame(target)
+            if '<title>reCAPTCHA</title>' in self.driver.page_source:
+                break
+            else:
+                self.driver.switch_to.default_content()
 
         target = self.locate_element('//span[@id="recaptcha-anchor"]')
         target.click()
