@@ -320,6 +320,7 @@ class Bot:
 
     def set_supply(self, supply, delay=0.0):
         target = self.locate_element('//input[@id="supply"]', 'supply')
+        target.send_keys(Keys.CONTROL, 'a')
         target.send_keys('{}'.format(supply))
         time.sleep(delay)
     
