@@ -317,6 +317,11 @@ class Bot:
             '//textarea[@placeholder="Enter content (access key, code to redeem, link to a file, etc.)"]')
         target.send_keys(secret)
         time.sleep(delay)
+
+    def set_supply(self, supply, delay=0.0):
+        target = self.locate_element('//input[@id="supply"]', 'supply')
+        target.send_keys('{}'.format(supply))
+        time.sleep(delay)
     
     def list_item(self, price, extend_listing=False, delay=0.0):
         target = self.locate_element('//a[text()="Sell"]', 'sell')
