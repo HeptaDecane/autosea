@@ -501,8 +501,17 @@ class Bot:
         self.locate_element('//button[@id="recaptcha-audio-button"]')
         self.driver.execute_script('document.getElementById("recaptcha-audio-button").click()')
 
-        target = self.locate_element('//a[@class="rc-audiochallenge-tdownload-link"]')
+        target, target_index = self.locate_elements([
+            '//div[text()="Try again later"]',
+            '//a[@class="rc-audiochallenge-tdownload-link"]'
+        ])
+        if target_index == 0:
+            self.driver.switch_to.default_content()
+            os.system('notify-send "Captcha" "automated requests"')
+            return
+
         src = target.get_attribute('href')
+        print(src)
 
         self.driver.switch_to.default_content()
         self.driver.switch_to.window('solver')
@@ -514,6 +523,7 @@ class Bot:
         file.write(response.content)
         file.close()
         os.system('ffmpeg -i {}.mp3 {}.wav -y'.format(fileid, fileid))
+        os.system('stat {}.wav'.format(fileid))
 
         self.locate_element('//input[@id="punctuation"]')
         self.driver.execute_script('document.getElementById("punctuation").click()')
