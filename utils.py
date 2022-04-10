@@ -393,6 +393,64 @@ class Bot:
                 print(Response.TIMEOUT)
                 return Response.TIMEOUT
 
+    def collect_users(self, url, users_file):
+        try:
+            file = open(users_file, 'r')
+            users = json.load(file)
+        except FileNotFoundError:
+            users = []
+
+        links = [user['link'] for user in users]
+        addresses = [user['address'] for user in users]
+
+        self.driver.get(url)
+        time.sleep(5)
+        new_links = []
+
+        while True:
+            try:
+                anchors = self.driver.find_elements_by_xpath('//a[@ class="styles__StyledLink-sc-l6elh8-0 ikuMIO Blockreact__Block-sc-1xf18x6-0 kdnPIp AccountLink--ellipsis-overflow"]')
+            except Exception as e:
+                anchors = []
+                print(e)
+
+            if not anchors:
+                self.reload()
+
+            for i in range(len(anchors)):
+                try:
+                    link = anchors[i].get_attribute('href')
+                    if i % 2 != 0 and link not in links:
+                        print(link)
+                        links.append(link)
+                        new_links.append(link)
+                except Exception as e:
+                    print(e)
+
+            for link in new_links:
+                self.driver.get(link)
+                try:
+                    match = re.search('\"wallet_accountKey\":{\"address\":\"\w{42}\"}', self.driver.page_source)
+                    match = re.search('0x\w{40}', match.group())
+                    address = match.group()
+                    if address not in addresses:
+                        print(address)
+                        addresses.append(address)
+                        users.append({
+                            'link': link,
+                            'address': address
+                        })
+
+                        json.dump(users, open('.{}'.format(users_file), 'w'), indent=2)
+                        json.dump(users, open(users_file, 'w'), indent=2)
+                except Exception as e:
+                    print(e)
+
+            if new_links:
+                self.driver.get(url)
+                time.sleep(5)
+                new_links = []
+
     def collect_links(self, url, links_file):
         try:
             file = open(links_file, 'r')
