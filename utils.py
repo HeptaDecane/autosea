@@ -11,6 +11,7 @@ from datetime import datetime
 from selenium import webdriver
 from pyvirtualdisplay import Display
 from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
 
 BASE_DIR = Path(__file__).resolve().parent
 DIR = os.getcwd()
@@ -28,23 +29,24 @@ class TimeoutException(Exception):
 
 
 class Browser(Thread):
-    def __init__(self, driver_location, binary_location, user_data, command, virtual=False, debug_port=9222):
+    def __init__(self, driver_location, command, virtual=False, debug_port=9222, loading='normal'):
         Thread.__init__(self)
 
         self.virtual = virtual
         self.wallet_unlocked = False
-        self.command = '{} --remote-debugging-port={} --user-data-dir="{}"'.format(command, debug_port, user_data)
+        self.command = '{} --remote-debugging-port={}'.format(command, debug_port)
 
         options = webdriver.ChromeOptions()
-        options.binary_location = binary_location
         options.add_experimental_option("debuggerAddress", "127.0.0.1:{}".format(debug_port))
-        options.add_argument('--user-data-dir={}'.format(user_data))
         options.add_argument("--disable-blink-features=AutomationControlled")
+        desired_capabilities = DesiredCapabilities().CHROME
+        desired_capabilities["pageLoadStrategy"] = loading
 
         self.start()
-        self.driver = webdriver.Chrome(executable_path=driver_location, options=options)
+        self.driver = webdriver.Chrome(executable_path=driver_location, options=options, desired_capabilities=desired_capabilities)
         self.locate_element = None
         self.locate_elements = None
+        self.safe_click = None
 
     def run(self):
         if self.virtual:
@@ -111,15 +113,15 @@ class Browser(Thread):
         if target_index == 0:
             print('sign')
             target = self.locate_element('//div[@class="signature-request-message__scroll-button"]')
-            target.click()
+            self.safe_click(target)
             time.sleep(delay)
             target = self.locate_element('//button[text()="Sign"]')
-            target.click()
+            self.safe_click(target)
 
         elif target_index == 1:
             print('reject')
             target = self.locate_element('//button[text()="Reject"]')
-            target.click()
+            self.safe_click(target)
 
         self.driver.switch_to.window("opensea")
 
@@ -137,10 +139,20 @@ class Bot:
 
         browser.locate_element = self.locate_element
         browser.locate_elements = self.locate_elements
+        browser.safe_click = self.safe_click
 
     def reload(self):
         self.driver.refresh()
         time.sleep(5)
+
+    def safe_click(self, web_element):
+        clicked = False
+        while not clicked:
+            try:
+                web_element.click()
+                clicked = True
+            except Exception:
+                clicked = False
 
     def locate_element(self, xpath, desc=None, index=0):
         start_time = time.time()
