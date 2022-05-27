@@ -205,16 +205,17 @@ class Bot:
         # go to collection page
         self.driver.execute_script("window.open('about:blank', 'opensea');")
         self.driver.switch_to.window("opensea")
-        self.driver.get("https://opensea.io/account")
 
         while True:
+            self.driver.get("https://opensea.io/account")
             target, target_idx = self.locate_any([
                 '//input[@type="file"]',
                 '//ul[contains(@class,"ConnectCompatibleWallet--wallet-list")]'
             ])
-            self.reload()
+
             if target_idx == 0:
                 break
+
 
 
     def select_media(self, filename, delay=0.0):
