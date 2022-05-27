@@ -212,6 +212,7 @@ class Bot:
                 '//input[@type="file"]',
                 '//ul[contains(@class,"ConnectCompatibleWallet--wallet-list")]'
             ])
+            self.reload()
             if target_idx == 0:
                 break
 
