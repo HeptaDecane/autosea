@@ -45,7 +45,7 @@ class Browser(Thread):
         self.start()
         self.driver = webdriver.Chrome(executable_path=driver_location, options=options, desired_capabilities=desired_capabilities)
         self.locate_element = None
-        self.locate_elements = None
+        self.locate_any = None
         self.safe_click = None
 
     def run(self):
@@ -105,7 +105,7 @@ class Browser(Thread):
         time.sleep(delay)
         self.driver.refresh()
 
-        target, target_index = self.locate_elements([
+        target, target_index = self.locate_any([
             '//button[text()="Sign"]',
             '//button[text()="Reject"]'
         ])
@@ -138,7 +138,7 @@ class Bot:
         self.driver.maximize_window()
 
         browser.locate_element = self.locate_element
-        browser.locate_elements = self.locate_elements
+        browser.locate_any = self.locate_any
         browser.safe_click = self.safe_click
 
     def reload(self):
@@ -177,7 +177,7 @@ class Bot:
         print('✓')
         return items[index]
 
-    def locate_elements(self, xpaths, desc=None, index=0):
+    def locate_any(self, xpaths, desc=None, index=0):
         if desc:
             print(desc)
 
@@ -198,22 +198,23 @@ class Bot:
                     os.system('notify-send "Timeout" "{}"'.format(desc))
                     start_time = current_time
 
-    def access_collection(self, collection_url):
+    def access_account(self):
         if not self.browser.wallet_unlocked:
             raise Exception('wallet is locked')
-
-        self.collection_url = collection_url
-        self.asset_url = '{}asset/matic/0x2953399124f0cbb46d2cbacd8a89cf0599974963/{}/edit'.format(collection_url, '{}')
 
         # go to collection page
         self.driver.execute_script("window.open('about:blank', 'opensea');")
         self.driver.switch_to.window("opensea")
-        self.driver.get(collection_url)
-        time.sleep(5)
-        self.driver.refresh()
-        time.sleep(5)
+        self.driver.get("https://opensea.io/account")
 
-        self.locate_element('//a[text()="Add item"]', 'add item')
+        while True:
+            target, target_idx = self.locate_any([
+                '//input[@type="file"]',
+                '//h1[text()="You need an Ethereum wallet to use OpenSea."]'
+            ])
+            if target_idx == 0:
+                break
+
 
     def select_media(self, filename, delay=0.0):
         target = self.locate_element('//input[@id="media"]', 'media')
@@ -556,7 +557,7 @@ class Bot:
 
         self.driver.switch_to.default_content()
 
-        target, target_index = self.locate_elements([
+        target, target_index = self.locate_any([
             '//h4[text()="Please wait..."]',
             '//div[contains(@style,"visibility: visible;")]'
         ])
@@ -571,7 +572,7 @@ class Bot:
         self.locate_element('//button[@id="recaptcha-audio-button"]')
         self.driver.execute_script('document.getElementById("recaptcha-audio-button").click()')
 
-        target, target_index = self.locate_elements([
+        target, target_index = self.locate_any([
             '//div[text()="Try again later"]',
             '//a[@class="rc-audiochallenge-tdownload-link"]'
         ])
