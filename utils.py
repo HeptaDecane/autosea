@@ -422,7 +422,7 @@ class Bot:
 
         while True:
             try:
-                anchors = self.driver.find_elements_by_xpath('//a[@ class="styles__StyledLink-sc-l6elh8-0 ikuMIO Blockreact__Block-sc-1xf18x6-0 kdnPIp AccountLink--ellipsis-overflow"]')
+                anchors = self.driver.find_elements_by_xpath('//a[contains(@class,"AccountLink--ellipsis-overflow")]')
             except Exception as e:
                 anchors = []
                 print(e)
