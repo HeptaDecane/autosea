@@ -216,8 +216,6 @@ class Bot:
             if target_idx == 0:
                 break
 
-
-
     def select_media(self, filename, delay=0.0):
         target = self.locate_element('//input[@id="media"]', 'media')
         target.send_keys(self.store + filename)
