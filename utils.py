@@ -210,7 +210,7 @@ class Bot:
         while True:
             target, target_idx = self.locate_any([
                 '//input[@type="file"]',
-                '//h1[text()="You need an Ethereum wallet to use OpenSea."]'
+                '//ul[contains(@class,"ConnectCompatibleWallet--wallet-list")]'
             ])
             if target_idx == 0:
                 break
