@@ -132,6 +132,7 @@ class Bot:
         self.store = None
         self.asset_url = None
         self.raise_exception = True
+        self.api_key = None
         self.captcha_solver_loaded = False
         self.browser = browser
         self.driver = browser.driver
@@ -529,12 +530,15 @@ class Bot:
             offset['start'] = start
             json.dump(offset, open(offset_file, 'w'), indent=2)
 
-    def load_captcha_solver(self):
-        self.driver.execute_script("window.open('about:blank', 'solver');")
-        self.driver.switch_to.window('solver')
-        self.driver.get('https://azure.microsoft.com/en-us/services/cognitive-services/speech-to-text')
+    def load_captcha_solver(self, api_key=None):
+        if api_key:
+            self.api_key = api_key
+        else:
+            self.driver.execute_script("window.open('about:blank', 'solver');")
+            self.driver.switch_to.window('solver')
+            self.driver.get('https://azure.microsoft.com/en-us/services/cognitive-services/speech-to-text')
+            time.sleep(5)
         self.captcha_solver_loaded = True
-        time.sleep(5)
 
     def solve_captcha(self):
         if not self.captcha_solver_loaded:
@@ -579,38 +583,16 @@ class Bot:
 
         src = target.get_attribute('href')
         print(src)
-
         self.driver.switch_to.default_content()
-        self.driver.switch_to.window('solver')
-        self.driver.refresh()
 
         response = requests.get(src)
         fileid = ''.join(str(uuid4()).split('-'))
         file = open('{}.mp3'.format(fileid), "wb")
         file.write(response.content)
         file.close()
-        os.system('ffmpeg -i {}.mp3 {}.wav -y'.format(fileid, fileid))
-        os.system('stat {}.wav'.format(fileid))
 
-        self.locate_element('//input[@id="punctuation"]')
-        self.driver.execute_script('document.getElementById("punctuation").click()')
-        target = self.locate_element('//input[@id="fileinput"]')
-        target.send_keys('{}/{}.wav'.format(DIR, fileid))
-
-        text = None
-        while True:
-            target = self.locate_element('//textarea[@id="speechout"]',)
-            text = target.get_attribute('value')
-            if fileid in text and text.count('-') > 100:
-                break
-
-        for phrase in text.split('-'):
-            if fileid not in phrase and '\n' in phrase:
-                text = phrase.strip()
-                break
-
-        os.remove('{}.mp3'.format(fileid))
-        os.remove('{}.wav'.format(fileid))
+        text = self.assembly_ai_transcribe(fileid) if self.api_key else self.ms_cognitive_services(fileid)
+        print(text)
 
         self.driver.switch_to.window('opensea')
         target = self.locate_element('//iframe[@title="recaptcha challenge expires in two minutes"]')
@@ -624,3 +606,60 @@ class Bot:
         self.driver.execute_script('document.getElementById("recaptcha-verify-button").click()')
 
         self.driver.switch_to.default_content()
+
+    def ms_cognitive_services(self, fileid):
+        os.system('ffmpeg -i {}.mp3 {}.wav -y'.format(fileid, fileid))
+        os.system('stat {}.wav'.format(fileid))
+
+        self.driver.switch_to.window('solver')
+        self.driver.refresh()
+
+        self.locate_element('//input[@id="punctuation"]')
+        self.driver.execute_script('document.getElementById("punctuation").click()')
+        target = self.locate_element('//input[@id="fileinput"]')
+        target.send_keys('{}/{}.wav'.format(DIR, fileid))
+
+        text = None
+        while True:
+            target = self.locate_element('//textarea[@id="speechout"]', )
+            text = target.get_attribute('value')
+            if fileid in text and text.count('-') > 100:
+                break
+
+        for phrase in text.split('-'):
+            if fileid not in phrase and '\n' in phrase:
+                text = phrase.strip()
+                break
+
+        os.remove('{}.mp3'.format(fileid))
+        os.remove('{}.wav'.format(fileid))
+        return text
+
+    def assembly_ai_transcribe(self, fileid):
+        headers = {
+            'authorization': self.api_key,
+            'content-type': "application/json"
+        }
+
+        file = open(f'{fileid}.mp3', 'rb')
+        data = file.read()
+        file.close()
+        url = 'https://api.assemblyai.com/v2/upload'
+        response = requests.post(url=url, headers=headers, data=data)
+        audio_url = response.json().get('upload_url')
+        print(audio_url)
+
+        os.remove('{}.mp3'.format(fileid))
+
+        url = "https://api.assemblyai.com/v2/transcript"
+        response = requests.post(url=url, json={'audio_url': audio_url}, headers=headers)
+        transcript_id = response.json().get('id')
+        print(transcript_id)
+
+        while True:
+            url = f'https://api.assemblyai.com/v2/transcript/{transcript_id}'
+            response = requests.get(url=url, headers=headers)
+            response = response.json()
+            if response['status'] == 'completed':
+                text = " ".join([word['text'] for word in response['words']])
+                return text
