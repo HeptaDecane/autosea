@@ -396,7 +396,7 @@ class Bot:
                 print(Response.SUCCESS)
                 return Response.SUCCESS
     
-            failure = self.driver.find_elements_by_xpath('//i[@value="error"]')
+            failure = self.driver.find_elements_by_xpath('//div[@role="alert"]')
             if failure:
                 time.sleep(delay)
                 print(Response.FAILURE)
