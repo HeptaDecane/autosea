@@ -226,107 +226,107 @@ class Bot:
         target = self.locate_element('//input[@id="name"]', 'name')
         target.send_keys(name)
         time.sleep(delay)
-    
+
     def add_description(self, desc, delay=0.0):
         target = self.locate_element('//textarea[@id="description"]', 'description')
         target.send_keys(desc)
         time.sleep(delay)
-    
+
     def add_properties(self, props, delay=0.0):
         target = self.locate_element('//button[@aria-label="Add properties"]', 'add properties')
         target.click()
         time.sleep(delay)
-    
+
         for key in props:
             target = self.locate_element('//input[@aria-label="Provide the property name"]', index=-1)
             target.send_keys(key)
             time.sleep(delay)
-    
+
             target = self.locate_element('//input[@aria-label="Provide the property value"]', index=-1)
             target.send_keys(props[key])
             time.sleep(delay)
-    
+
             target = self.locate_element('//button[text()="Add more"]', 'add more')
             target.click()
             time.sleep(delay)
-    
+
         target = self.locate_element('//button[@aria-label="Remove Trait"]', index=-1)
         target.click()
         time.sleep(delay)
-    
+
         target = self.locate_element('//button[text()="Save"]', 'save props')
         target.click()
         time.sleep(delay)
-    
+
     def add_levels(self, levels, delay=0.0):
         target = self.locate_element('//button[@aria-label="Add levels"]', 'add levels')
         target.click()
         time.sleep(delay)
-    
+
         for key in levels:
             target = self.locate_element('//input[@aria-label="Provide the numeric trait name"]', index=-1)
             target.send_keys(key)
             time.sleep(delay)
-    
+
             target = self.locate_element('//input[@aria-label="Provide the max number of the numeric trait"]', index=-1)
             target.send_keys(Keys.CONTROL, 'a')
             target.send_keys(levels[key][1])
             time.sleep(delay)
-    
+
             target = self.locate_element('//input[@aria-label="Provide the min number of the numeric trait"]', index=-1)
             target.send_keys(Keys.CONTROL, 'a')
             target.send_keys(levels[key][0])
             time.sleep(delay)
-    
+
             target = self.locate_element('//button[text()="Add more"]', 'add more')
             target.click()
             time.sleep(delay)
-    
+
         target = self.locate_element('//button[@aria-label="Remove Button"]', index=-1)
         target.click()
         time.sleep(delay)
-    
+
         target = self.locate_element('//button[text()="Save"]', 'save levels')
         target.click()
         time.sleep(delay)
-    
+
     def add_stats(self, stats, delay=0.0):
         target = self.locate_element('//button[@aria-label="Add stats"]', 'add stats')
         target.click()
         time.sleep(delay)
-    
+
         for key in stats:
             target = self.locate_element('//input[@aria-label="Provide the numeric trait name"]', index=-1)
             target.send_keys(key)
             time.sleep(delay)
-    
+
             target = self.locate_element('//input[@aria-label="Provide the max number of the numeric trait"]', index=-1)
             target.send_keys(Keys.CONTROL, 'a')
             target.send_keys(stats[key][1])
             time.sleep(delay)
-    
+
             target = self.locate_element('//input[@aria-label="Provide the min number of the numeric trait"]', index=-1)
             target.send_keys(Keys.CONTROL, 'a')
             target.send_keys(stats[key][0])
             time.sleep(delay)
-    
+
             target = self.locate_element('//button[text()="Add more"]', 'add more')
             target.click()
             time.sleep(delay)
-    
+
         target = self.locate_element('//button[@aria-label="Remove Button"]', index=-1)
         target.click()
         time.sleep(delay)
-    
+
         target = self.locate_element('//button[text()="Save"]', 'save stats')
         target.click()
         time.sleep(delay)
-    
+
     def add_unlockable(self, secret, delay=0.0):
         target = self.locate_element('//input[@id="unlockable-content-toggle"]', 'unlockable')
         target.click()
         time.sleep(delay)
-    
+
         target = self.locate_element(
             '//textarea[@placeholder="Enter content (access key, code to redeem, link to a file, etc.)"]')
         target.send_keys(secret)
@@ -337,30 +337,30 @@ class Bot:
         target.send_keys(Keys.CONTROL, 'a')
         target.send_keys('{}'.format(supply))
         time.sleep(delay)
-    
+
     def list_item(self, price, extend_listing=False, delay=0.0):
         if extend_listing:
             target = self.locate_element('//i[@value="calendar_today"]')
             target.click()
             time.sleep(delay)
-    
+
             target = self.locate_element('//input[@type="date"]', index=-1)
             target.click()
             time.sleep(delay)
-    
+
             now = datetime.now()
             date = min(30, int(now.strftime("%d")))
             month_6 = int(now.strftime("%m")) + 6
-    
+
             target.send_keys('%02d' % date)
             target.send_keys(Keys.ARROW_RIGHT)
             target.send_keys('%02d' % month_6)
             time.sleep(delay)
-    
+
         target = self.locate_element('//input[@placeholder="Amount"]', 'amount')
         target.send_keys('{}'.format(price))
         time.sleep(delay)
-    
+
         target = self.locate_element('//button[text()="Complete listing"]', 'complete listing')
         target.click()
         time.sleep(delay)
@@ -369,19 +369,19 @@ class Bot:
         target = self.locate_element('//input[@id="freezeMetadata"]', 'freeze switch')
         target.click()
         time.sleep(delay)
-    
+
         target = self.locate_element('//button[text()="Freeze"]', 'freeze btn')
         target.click()
         time.sleep(delay)
-    
+
         target = self.locate_element('//input[@name="freezeMetadataConsent"]', 'freeze checkbox')
         target.click()
         time.sleep(delay)
-    
+
         target = self.locate_element('//button[text()="Confirm"]', 'freeze btn')
         target.click()
         time.sleep(delay)
-    
+
     def wait_for_progress(self, delay=0):
         print("wait_for_progress")
         start_time = time.time()
@@ -392,13 +392,13 @@ class Bot:
                 time.sleep(delay)
                 print(Response.SUCCESS)
                 return Response.SUCCESS
-    
+
             failure = self.driver.find_elements_by_xpath('//div[@role="alert"]')
             if failure:
                 time.sleep(delay)
                 print(Response.FAILURE)
                 return Response.FAILURE
-    
+
             if current_time - start_time > 300:
                 print(Response.TIMEOUT)
                 return Response.TIMEOUT
@@ -438,7 +438,12 @@ class Bot:
                     print(e)
 
             for link in new_links:
-                self.driver.get(link)
+                while True:
+                    try:
+                        self.driver.get(link)
+                        break
+                    except Exception as e:
+                        print(e)
                 try:
                     match = re.search('\"wallet_accountKey\":{\"address\":\"\w{42}\"}', self.driver.page_source)
                     match = re.search('0x\w{40}', match.group())
