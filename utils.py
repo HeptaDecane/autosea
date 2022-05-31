@@ -338,10 +338,6 @@ class Bot:
         time.sleep(delay)
     
     def list_item(self, price, extend_listing=False, delay=0.0):
-        target = self.locate_element('//a[text()="Sell"]', 'sell')
-        target.click()
-        time.sleep(delay)
-    
         if extend_listing:
             target = self.locate_element('//i[@value="calendar_today"]')
             target.click()
