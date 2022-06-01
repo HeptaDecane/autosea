@@ -444,6 +444,7 @@ class Bot:
                         break
                     except Exception as e:
                         print(e)
+                        time.sleep(1)
                 try:
                     match = re.search('\"wallet_accountKey\":{\"address\":\"\w{42}\"}', self.driver.page_source)
                     match = re.search('0x\w{40}', match.group())
@@ -462,7 +463,13 @@ class Bot:
                     print(e)
 
             if new_links:
-                self.driver.get(url)
+                while True:
+                    try:
+                        self.driver.get(url)
+                        break
+                    except Exception as e:
+                        print(e)
+                        time.sleep(1)
                 time.sleep(5)
                 new_links = []
 
