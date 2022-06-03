@@ -443,27 +443,31 @@ class Bot:
                     print(e)
 
             for sale in new_sales:
-                response = requests.get(sale['txn'])
-                match = re.search('Transfer\sof(.*)>', response.text)
-                match = re.search('To(.*)>', match.group())
-                match = re.search('0x\w{40}', match.group())
-                address = match.group().lower()
+                try:
+                    response = requests.get(sale['txn'])
+                    match = re.search('Transfer\sof(.*)>', response.text)
+                    match = re.search('To(.*)>', match.group())
+                    match = re.search('0x\w{40}', match.group())
+                    address = match.group().lower()
 
-                if address not in addresses:
-                    print(sale['buyer'], address)
-                    addresses.append(address)
-                    users.append({
-                        'link': sale['buyer'],
-                        'address': address
-                    })
+                    if address not in addresses:
+                        print(sale['buyer'], address)
+                        addresses.append(address)
+                        users.append({
+                            'link': sale['buyer'],
+                            'address': address
+                        })
 
-                    file = open('.{}'.format(users_file), 'w')
-                    json.dump(users, file, indent=2)
-                    file.close()
+                        file = open('.{}'.format(users_file), 'w')
+                        json.dump(users, file, indent=2)
+                        file.close()
 
-                    file = open(users_file, 'w')
-                    json.dump(users, file, indent=2)
-                    file.close()
+                        file = open(users_file, 'w')
+                        json.dump(users, file, indent=2)
+                        file.close()
+
+                except Exception as e:
+                    print(e)
 
             if new_sales:
                 time.sleep(3)
