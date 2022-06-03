@@ -407,6 +407,7 @@ class Bot:
         try:
             file = open(users_file, 'r')
             users = json.load(file)
+            file.close()
         except FileNotFoundError:
             users = []
 
@@ -415,132 +416,56 @@ class Bot:
 
         self.driver.get(url)
         time.sleep(5)
-        new_links = []
+        new_sales = []
 
         while True:
             try:
-                anchors = self.driver.find_elements_by_xpath('//a[contains(@class,"AccountLink--ellipsis-overflow")]')
+                events = self.driver.find_elements_by_xpath('//div[@role="listitem"]')
             except Exception as e:
-                anchors = []
+                events = []
                 print(e)
 
-            if not anchors:
-                self.reload()
-
-            for i in range(len(anchors)):
+            for event in events:
                 try:
-                    link = anchors[i].get_attribute('href')
-                    if i % 2 != 0 and link not in links:
-                        print(link)
-                        links.append(link)
-                        new_links.append(link)
-                except Exception as e:
-                    print(e)
+                    buyer = event.find_elements_by_xpath('.//a[contains(@class,"AccountLink--ellipsis-overflow")]')[-1]
+                    txn = event.find_elements_by_xpath('.//a[contains(@class,"EventTimestamp--link")]')[0]
 
-            for link in new_links:
-                while True:
-                    try:
-                        self.driver.get(link)
-                        break
-                    except Exception as e:
-                        print(e)
-                        time.sleep(1)
-                try:
-                    match = re.search('\"wallet_accountKey\":{\"address\":\"\w{42}\"}', self.driver.page_source)
-                    match = re.search('0x\w{40}', match.group())
-                    address = match.group()
-                    if address not in addresses:
-                        print(address)
-                        addresses.append(address)
-                        users.append({
-                            'link': link,
-                            'address': address
+                    buyer_link = buyer.get_attribute('href')
+                    txn_link = txn.get_attribute('href')
+                    if buyer_link not in links:
+                        print(buyer_link)
+                        links.append(buyer_link)
+                        new_sales.append({
+                            'buyer': buyer_link,
+                            'txn': txn_link
                         })
-
-                        json.dump(users, open('.{}'.format(users_file), 'w'), indent=2)
-                        json.dump(users, open(users_file, 'w'), indent=2)
                 except Exception as e:
                     print(e)
 
-            if new_links:
-                while True:
-                    try:
-                        self.driver.get(url)
-                        break
-                    except Exception as e:
-                        print(e)
-                        time.sleep(1)
-                time.sleep(5)
-                new_links = []
-
-    def collect_links(self, url, links_file):
-        try:
-            file = open(links_file, 'r')
-            links = json.load(file)
-        except FileNotFoundError:
-            links = []
-
-        self.driver.get(url)
-        time.sleep(5)
-
-        while True:
-            try:
-                anchors = self.driver.find_elements_by_xpath('//a[@ class="styles__StyledLink-sc-l6elh8-0 ikuMIO Blockreact__Block-sc-1xf18x6-0 kdnPIp AccountLink--ellipsis-overflow"]')
-            except Exception as e:
-                anchors = []
-                print(e)
-
-            for i in range(len(anchors)):
-                try:
-                    link = anchors[i].get_attribute('href')
-                    if i % 2 != 0 and link not in links:
-                        links.append(link)
-                        print(link)
-                except Exception as e:
-                    print(e)
-            json.dump(links, open(links_file, 'w'), indent=2)
-            time.sleep(1)
-
-    def collect_address(self, links_file, address_file, offset_file):
-        try:
-            file = open(links_file, 'r')
-            links = json.load(file)
-        except FileNotFoundError:
-            links = []
-
-        try:
-            file = open(address_file, 'r')
-            addresses = json.load(file)
-        except FileNotFoundError:
-            addresses = []
-
-        try:
-            file = open(offset_file, 'r')
-            offset = json.load(file)
-            start = offset['start']
-        except FileNotFoundError:
-            offset = {'start': 0}
-            start = offset['start']
-
-        end = len(links)
-
-        while start < end:
-            self.driver.get(links[start])
-            try:
-                match = re.search('\"wallet_accountKey\":{\"address\":\"\w{42}\"}', self.driver.page_source)
+            for sale in new_sales:
+                response = requests.get(sale['txn'])
+                match = re.search('Transfer\sof(.*)>', response.text)
+                match = re.search('To(.*)>', match.group())
                 match = re.search('0x\w{40}', match.group())
-                address = match.group()
+                address = match.group().lower()
+
                 if address not in addresses:
+                    print(sale['buyer'], address)
                     addresses.append(address)
-                    json.dump(addresses, open(address_file, 'w'), indent=2)
-            except Exception as e:
-                print(e)
+                    users.append({
+                        'link': sale['buyer'],
+                        'address': address
+                    })
 
-            print('{}/{}'.format(start, end), links[start])
+                    file = open('.{}'.format(users_file), 'w')
+                    json.dump(users, file, indent=2)
+                    file.close()
 
-            start += 1
-            offset['start'] = start
-            json.dump(offset, open(offset_file, 'w'), indent=2)
+                    file = open(users_file, 'w')
+                    json.dump(users, file, indent=2)
+                    file.close()
+
+            time.sleep(3)
 
     def load_captcha_solver(self, api_key=None):
         if api_key:
