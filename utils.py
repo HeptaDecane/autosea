@@ -465,7 +465,9 @@ class Bot:
                     json.dump(users, file, indent=2)
                     file.close()
 
-            time.sleep(3)
+            if new_sales:
+                time.sleep(3)
+                new_sales = []
 
     def load_captcha_solver(self, api_key=None):
         if api_key:
