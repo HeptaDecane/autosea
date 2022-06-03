@@ -11,5 +11,4 @@
 .idea/
 
 # testing
-test.py
-*_test*
+tests
